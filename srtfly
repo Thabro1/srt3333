@@ -1,0 +1,90 @@
+--// Universal Fly GUI by ChatGPT
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+-- UI
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "FlyGUI"
+
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0, 120, 0, 40)
+ToggleButton.Position = UDim2.new(0, 20, 0, 200)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ToggleButton.TextColor3 = Color3.new(1,1,1)
+ToggleButton.Text = "Fly: OFF"
+ToggleButton.Parent = ScreenGui
+ToggleButton.Active = true
+ToggleButton.Draggable = true
+ToggleButton.BorderSizePixel = 0
+ToggleButton.BackgroundTransparency = 0.2
+
+-- Fly System
+local flying = false
+local speed = 70
+local bv, bg
+local cam = workspace.CurrentCamera
+local control = {F = 0, B = 0, L = 0, R = 0, U = 0, D = 0}
+
+UIS.InputBegan:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.W then control.F = 1 end
+	if input.KeyCode == Enum.KeyCode.S then control.B = 1 end
+	if input.KeyCode == Enum.KeyCode.A then control.L = 1 end
+	if input.KeyCode == Enum.KeyCode.D then control.R = 1 end
+	if input.KeyCode == Enum.KeyCode.Space then control.U = 1 end
+	if input.KeyCode == Enum.KeyCode.LeftControl then control.D = 1 end
+end)
+
+UIS.InputEnded:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.W then control.F = 0 end
+	if input.KeyCode == Enum.KeyCode.S then control.B = 0 end
+	if input.KeyCode == Enum.KeyCode.A then control.L = 0 end
+	if input.KeyCode == Enum.KeyCode.D then control.R = 0 end
+	if input.KeyCode == Enum.KeyCode.Space then control.U = 0 end
+	if input.KeyCode == Enum.KeyCode.LeftControl then control.D = 0 end
+end)
+
+function startFly()
+	Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+	HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+	bv = Instance.new("BodyVelocity")
+	bv.Velocity = Vector3.zero
+	bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+	bv.P = 1250
+	bv.Parent = HumanoidRootPart
+
+	bg = Instance.new("BodyGyro")
+	bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+	bg.P = 3000
+	bg.CFrame = HumanoidRootPart.CFrame
+	bg.Parent = HumanoidRootPart
+
+	RunService:BindToRenderStep("FlyControl", Enum.RenderPriority.Input.Value, function()
+		local cf = cam.CFrame
+		local direction = Vector3.new(
+			(control.R - control.L),
+			(control.U - control.D),
+			(control.F - control.B)
+		)
+
+		local relativeDirection = cf:VectorToWorldSpace(direction)
+		bv.Velocity = relativeDirection * speed
+		bg.CFrame = cf
+	end)
+end
+
+function stopFly()
+	if bv then bv:Destroy() end
+	if bg then bg:Destroy() end
+	RunService:UnbindFromRenderStep("FlyControl")
+end
+
+ToggleButton.MouseButton1Click:Connect(function()
+	flying = not flying
+	ToggleButton.Text = flying and "Fly: ON" or "Fly: OFF"
+	if flying then startFly() else stopFly() end
+end)
