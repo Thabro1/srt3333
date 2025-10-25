@@ -24,7 +24,7 @@ local lastClickTime = 0
 local lastEquipTimes = {}
 
 local floating = false
-local autoLaserCapeEnabled = true -- ADDED (auto start enabled)
+local autoLaserCapeEnabled = true
 
 -- GUI Setup
 local screenGui = Instance.new("ScreenGui")
@@ -86,8 +86,7 @@ local function updateToggle(state)
     end
 end
 
--- Initial toggle state ON (auto start)
-updateToggle(autoLaserCapeEnabled) -- ADDED
+updateToggle(autoLaserCapeEnabled)
 
 toggle.MouseButton1Click:Connect(function()
     autoLaserCapeEnabled = not autoLaserCapeEnabled
@@ -181,41 +180,44 @@ RunService.Heartbeat:Connect(function()
 end)
 
 Players.PlayerAdded:Connect(function(p)
-    p.CharacterAdded:Connect(function()
-        task.wait(1)
+    p.CharacterAdded:Connect(function(char)
         addESP(p)
     end)
 end)
 
--- Float ability (spacebar)
+-- Float ability (non-blocking)
 local function floatCharacter()
     if floating then return end
     floating = true
-
     humanoid.Jump = true
-    repeat task.wait() until humanoid:GetState() == Enum.HumanoidStateType.Freefall
 
-    local bodyPosition = Instance.new("BodyPosition")
-    bodyPosition.MaxForce = Vector3.new(0, math.huge, 0)
-    bodyPosition.Position = rootPart.Position + Vector3.new(0, floatHeight, 0)
-    bodyPosition.Parent = rootPart
+    local connection
+    connection = humanoid.StateChanged:Connect(function(_, newState)
+        if newState == Enum.HumanoidStateType.Freefall then
+            connection:Disconnect()
 
-    task.wait(floatDuration)
-    bodyPosition:Destroy()
-    floating = false
+            local bodyPosition = Instance.new("BodyPosition")
+            bodyPosition.MaxForce = Vector3.new(0, math.huge, 0)
+            bodyPosition.Position = rootPart.Position + Vector3.new(0, floatHeight, 0)
+            bodyPosition.Parent = rootPart
+
+            local startTime = tick()
+            RunService.Heartbeat:Connect(function()
+                if tick() - startTime >= floatDuration then
+                    bodyPosition:Destroy()
+                    floating = false
+                    return
+                end
+            end)
+        end
+    end)
 end
 
--- Input handling
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-
-    -- Float ability
     if input.KeyCode == Enum.KeyCode.Space then
         floatCharacter()
-    end
-
-    -- F5 toggles Auto Laser Cape ON/OFF
-    if input.KeyCode == Enum.KeyCode.F5 then -- ADDED
+    elseif input.KeyCode == Enum.KeyCode.F5 then
         autoLaserCapeEnabled = not autoLaserCapeEnabled
         updateToggle(autoLaserCapeEnabled)
     end
