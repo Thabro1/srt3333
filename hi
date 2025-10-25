@@ -1,19 +1,77 @@
+-- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
+-- Player & Character References
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local rootPart = character:WaitForChild("HumanoidRootPart")
+local backpack = player:WaitForChild("Backpack")
 
 player.CharacterAdded:Connect(function(char)
     character = char
     humanoid = character:WaitForChild("Humanoid")
     rootPart = character:WaitForChild("HumanoidRootPart")
+    backpack = player:WaitForChild("Backpack")
 end)
 
--- Settings
+-- ===============================
+-- Flying Carpet to Spawn Feature
+-- ===============================
+local savedSpawn = rootPart.Position
+print("Spawn automatically saved at:", savedSpawn)
+
+local returnToSpawn = false
+local returnSpeed = 23
+
+local bodyVelocity = Instance.new("BodyVelocity")
+bodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+bodyVelocity.Parent = nil
+
+local function equipFlyingCarpet()
+    local tool = backpack:FindFirstChild("Flying Carpet") or character:FindFirstChild("Flying Carpet")
+    if tool then
+        tool.Parent = character
+    else
+        print("Flying Carpet not found in backpack or character!")
+    end
+end
+
+-- Press R to float back to spawn
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    if input.KeyCode == Enum.KeyCode.R then
+        returnToSpawn = true
+        bodyVelocity.Parent = rootPart
+        equipFlyingCarpet()
+        print("Floating back to spawn with Flying Carpet...")
+    end
+end)
+
+-- Smooth float back to spawn
+RunService.RenderStepped:Connect(function()
+    if returnToSpawn then
+        local direction = savedSpawn - rootPart.Position
+        local distance = direction.Magnitude
+        if distance < 1 then
+            returnToSpawn = false
+            bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+            bodyVelocity.Parent = nil
+            print("Arrived at spawn!")
+        else
+            equipFlyingCarpet()
+            bodyVelocity.Velocity = direction.Unit * returnSpeed
+        end
+    end
+end)
+
+-- ===============================
+-- Auto Laser Cape Feature
+-- ===============================
 local TOOL_NAME = "Laser Cape"
 local CLICK_INTERVAL = 0.2
 local EQUIP_INTERVAL = 10
@@ -22,11 +80,10 @@ local floatDuration = 1
 
 local lastClickTime = 0
 local lastEquipTimes = {}
-
 local floating = false
-local autoLaserCapeEnabled = true -- ADDED (auto start enabled)
+local autoLaserCapeEnabled = true -- auto start enabled
 
--- GUI Setup
+-- GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AutoLaserCapeGui"
 screenGui.ResetOnSpawn = false
@@ -86,8 +143,7 @@ local function updateToggle(state)
     end
 end
 
--- Initial toggle state ON (auto start)
-updateToggle(autoLaserCapeEnabled) -- ADDED
+updateToggle(autoLaserCapeEnabled)
 
 toggle.MouseButton1Click:Connect(function()
     autoLaserCapeEnabled = not autoLaserCapeEnabled
@@ -98,11 +154,9 @@ end)
 local function addESP(targetPlayer)
     local char = targetPlayer.Character
     if not char then return end
-
     local head = char:FindFirstChild("Head")
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not head or not hrp then return end
-
     if head:FindFirstChild("BigNameESP") then return end
 
     local billboard = Instance.new("BillboardGui")
@@ -135,7 +189,6 @@ end
 
 local function equipAndClick(targetPlayer)
     if not autoLaserCapeEnabled then return end
-
     local char = targetPlayer.Character
     if not char then return end
     addESP(targetPlayer)
@@ -191,7 +244,6 @@ end)
 local function floatCharacter()
     if floating then return end
     floating = true
-
     humanoid.Jump = true
     repeat task.wait() until humanoid:GetState() == Enum.HumanoidStateType.Freefall
 
@@ -209,13 +261,11 @@ end
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
 
-    -- Float ability
     if input.KeyCode == Enum.KeyCode.Space then
         floatCharacter()
     end
 
-    -- F5 toggles Auto Laser Cape ON/OFF
-    if input.KeyCode == Enum.KeyCode.F5 then -- ADDED
+    if input.KeyCode == Enum.KeyCode.F5 then
         autoLaserCapeEnabled = not autoLaserCapeEnabled
         updateToggle(autoLaserCapeEnabled)
     end
