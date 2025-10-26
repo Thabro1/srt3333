@@ -1,0 +1,286 @@
+--=============================
+-- Combined Script: Float + ESP + Speedboost Always On
+--=============================
+
+--// Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+--// Player References
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+local backpack = player:WaitForChild("Backpack")
+
+player.CharacterAdded:Connect(function(char)
+	character = char
+	humanoid = character:WaitForChild("Humanoid")
+	rootPart = character:WaitForChild("HumanoidRootPart")
+	backpack = player:WaitForChild("Backpack")
+end)
+
+----------------------------------------------------
+-- CONFIG
+----------------------------------------------------
+local TOOL_NAME = "Laser Cape"
+local CLICK_INTERVAL = 0.2
+local EQUIP_INTERVAL = 10
+local floatHeight = 13
+local floatDuration = 1
+local baseSpeed = 30
+
+-- Keybinds
+local KEYBIND_AUTOCAPE = Enum.KeyCode.F2
+local KEYBIND_DESYNC = Enum.KeyCode.F4
+local KEYBIND_MASTER = Enum.KeyCode.F5
+
+----------------------------------------------------
+-- VARS
+----------------------------------------------------
+local lastClickTime = 0
+local lastEquipTimes = {}
+local floating = false
+
+local autoCapeEnabled = false
+local desyncEnabled = false
+local autoCapeConn
+
+----------------------------------------------------
+-- FLOAT ABILITY (Always ON)
+----------------------------------------------------
+local function floatCharacter()
+	if floating then return end
+	floating = true
+	humanoid.Jump = true
+	repeat task.wait() until humanoid:GetState() == Enum.HumanoidStateType.Freefall
+
+	local bodyPosition = Instance.new("BodyPosition")
+	bodyPosition.MaxForce = Vector3.new(0, math.huge, 0)
+	bodyPosition.Position = rootPart.Position + Vector3.new(0, floatHeight, 0)
+	bodyPosition.Parent = rootPart
+
+	task.wait(floatDuration)
+	bodyPosition:Destroy()
+	floating = false
+end
+
+-- Auto Float constantly
+RunService.Heartbeat:Connect(floatCharacter)
+
+----------------------------------------------------
+-- PLAYER ESP (Always ON)
+----------------------------------------------------
+local function addESP(targetPlayer)
+	local char = targetPlayer.Character
+	if not char then return end
+	local head = char:FindFirstChild("Head")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not head or not hrp then return end
+
+	if head:FindFirstChild("BigNameESP") or hrp:FindFirstChild("ESPBox") then return end
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "BigNameESP"
+	billboard.Adornee = head
+	billboard.Size = UDim2.new(0, 200, 0, 50)
+	billboard.StudsOffset = Vector3.new(0, 2, 0)
+	billboard.AlwaysOnTop = true
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(1, 0, 1, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = targetPlayer.Name
+	nameLabel.TextColor3 = Color3.new(0, 1, 0)
+	nameLabel.TextScaled = true
+	nameLabel.Font = Enum.Font.SourceSansBold
+	nameLabel.Parent = billboard
+	billboard.Parent = head
+
+	local box = Instance.new("BoxHandleAdornment")
+	box.Name = "ESPBox"
+	box.Adornee = hrp
+	box.Size = Vector3.new(4, 6, 2)
+	box.Color3 = Color3.new(0, 1, 0)
+	box.Transparency = 0.6
+	box.AlwaysOnTop = true
+	box.ZIndex = 5
+	box.Parent = hrp
+end
+
+local function setupAllESPs()
+	for _, p in pairs(Players:GetPlayers()) do
+		if p ~= player then
+			addESP(p)
+			p.CharacterAdded:Connect(function()
+				task.wait(1)
+				addESP(p)
+			end)
+		end
+	end
+end
+
+-- Always enable ESP
+setupAllESPs()
+Players.PlayerAdded:Connect(function(p)
+	p.CharacterAdded:Connect(function()
+		task.wait(1)
+		addESP(p)
+	end)
+end)
+
+----------------------------------------------------
+-- SPEEDBOOST (Always ON)
+----------------------------------------------------
+local function GetCharacter()
+	local Char = player.Character or player.CharacterAdded:Wait()
+	local HRP = Char:WaitForChild("HumanoidRootPart")
+	local Hum = Char:FindFirstChildOfClass("Humanoid")
+	return Char, HRP, Hum
+end
+
+local function getMovementInput()
+	local Char, HRP, Hum = GetCharacter()
+	if not Char or not HRP or not Hum then return Vector3.new(0,0,0) end
+	local moveVector = Hum.MoveDirection
+	if moveVector.Magnitude > 0.1 then
+		return Vector3.new(moveVector.X, 0, moveVector.Z).Unit
+	end
+	return Vector3.new(0,0,0)
+end
+
+RunService.Heartbeat:Connect(function()
+	local Char, HRP, Hum = GetCharacter()
+	if not Char or not HRP or not Hum then return end
+	local inputDir = getMovementInput()
+	if inputDir.Magnitude > 0 then
+		HRP.AssemblyLinearVelocity = Vector3.new(
+			inputDir.X * baseSpeed,
+			HRP.AssemblyLinearVelocity.Y,
+			inputDir.Z * baseSpeed
+		)
+	end
+end)
+
+----------------------------------------------------
+-- AUTO LASER CAPE
+----------------------------------------------------
+local function equipAndClick(targetPlayer)
+	local char = targetPlayer.Character
+	if not char then return end
+	addESP(targetPlayer) -- ESP still always ON
+
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not hum then return end
+
+	local bp = targetPlayer:FindFirstChild("Backpack")
+	if not bp then return end
+
+	local toolInChar = char:FindFirstChildOfClass("Tool")
+	local toolInBackpack = bp:FindFirstChild(TOOL_NAME)
+	local now = tick()
+	local lastEquipTime = lastEquipTimes[targetPlayer] or 0
+
+	if now - lastEquipTime >= EQUIP_INTERVAL then
+		if toolInChar and toolInChar.Name == TOOL_NAME then
+			toolInChar.Parent = bp
+		end
+		if toolInBackpack then
+			hum:EquipTool(toolInBackpack)
+			lastEquipTimes[targetPlayer] = now
+		end
+	end
+
+	toolInChar = char:FindFirstChildOfClass("Tool")
+	if toolInChar and toolInChar.Name == TOOL_NAME and now - lastClickTime >= CLICK_INTERVAL then
+		pcall(function() toolInChar:Activate() end)
+		lastClickTime = now
+	end
+end
+
+local function startAutoLaserCape()
+	if autoCapeConn then return end
+	autoCapeConn = RunService.Heartbeat:Connect(function()
+		for _, p in pairs(Players:GetPlayers()) do
+			equipAndClick(p)
+		end
+	end)
+end
+
+local function stopAutoLaserCape()
+	if autoCapeConn then autoCapeConn:Disconnect() autoCapeConn = nil end
+end
+
+----------------------------------------------------
+-- MOBILE DESYNC
+----------------------------------------------------
+local function enableMobileDesync()
+	local success, err = pcall(function()
+		local backpack = player:WaitForChild("Backpack")
+		local character = player.Character or player.CharacterAdded:Wait()
+		local humanoid = character:WaitForChild("Humanoid")
+
+		local packages = ReplicatedStorage:WaitForChild("Packages", 5)
+		if not packages then return end
+		local netFolder = packages:WaitForChild("Net", 5)
+		if not netFolder then return end
+		local useItemRemote = netFolder:WaitForChild("RE/UseItem", 5)
+		local teleportRemote = netFolder:WaitForChild("RE/QuantumCloner/OnTeleport", 5)
+		if not useItemRemote or not teleportRemote then return end
+
+		local toolNames = {"Quantum Cloner", "Brainrot", "brainrot"}
+		local tool
+		for _, name in ipairs(toolNames) do
+			tool = backpack:FindFirstChild(name) or character:FindFirstChild(name)
+			if tool then break end
+		end
+		if not tool then
+			for _, item in ipairs(backpack:GetChildren()) do
+				if item:IsA("Tool") then tool=item break end
+			end
+		end
+
+		if tool and tool.Parent==backpack then
+			humanoid:EquipTool(tool)
+			task.wait(0.2)
+		end
+
+		if setfflag then setfflag("WorldStepMax", "-9999999999") end
+		task.wait(0.1)
+		useItemRemote:FireServer()
+		task.wait(1)
+		teleportRemote:FireServer()
+		task.wait(2)
+		if setfflag then setfflag("WorldStepMax", "-1") end
+	end)
+	if not success then warn(err) end
+end
+
+local function disableMobileDesync()
+	pcall(function()
+		if setfflag then setfflag("WorldStepMax", "-1") end
+	end)
+end
+
+----------------------------------------------------
+-- INPUT HANDLER (Only for AutoCape & Desync)
+----------------------------------------------------
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == KEYBIND_AUTOCAPE then
+		autoCapeEnabled = not autoCapeEnabled
+		if autoCapeEnabled then startAutoLaserCape() else stopAutoLaserCape() end
+		print("Auto Laser Cape: "..(autoCapeEnabled and "ON" or "OFF"))
+	elseif input.KeyCode == KEYBIND_DESYNC then
+		desyncEnabled = not desyncEnabled
+		if desyncEnabled then enableMobileDesync() else disableMobileDesync() end
+		print("Mobile Desync: "..(desyncEnabled and "ON" or "OFF"))
+	elseif input.KeyCode == KEYBIND_MASTER then
+		autoCapeEnabled, desyncEnabled = not autoCapeEnabled, not desyncEnabled
+		if autoCapeEnabled then startAutoLaserCape() else stopAutoLaserCape() end
+		if desyncEnabled then enableMobileDesync() else disableMobileDesync() end
+		print("Master Toggle AutoCape+Desync")
+	end
+end)
