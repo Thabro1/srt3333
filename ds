@@ -1,4 +1,4 @@
--- Apex Farm
+-- Srt Farm
 
 local Hyphon_Bypassed = false
 local Start = tick()
@@ -1567,7 +1567,7 @@ task.spawn(function()
     end)
 end)
 
-local Library = loadstring(game:HttpGet("https://pastebin.com/raw/CsBbtCN1"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/BypassCash1/kat-ui-library/refs/heads/main/pulse.lua"))()
 local OriginalWindow = Library.Window
 
 Library.Window = function(self, Data)
@@ -1626,11 +1626,11 @@ Library.Window = function(self, Data)
 end
 
 local Window = Library:Window({
-    Name = "Apex farm", 
+    Name = "Srt farm", 
     Logo = "95259225424429"
 })
 
-local Watermark = Library:Watermark("Apex farm")
+local Watermark = Library:Watermark("Srt farm")
 local KeybindList = Library:KeybindList()
 local MainPage = Window:Page({Name = "Main", Columns = 2})
 local SettingsPage = Library:CreateSettingsPage(Window, KeybindList, Watermark)
@@ -1717,7 +1717,7 @@ AddSectionGlow(DiscordSection)
 local DiscordButton = DiscordSection:Button({
     Name = "Join Discord Server",
     Callback = function()
-        setclipboard("https://discord.gg/jAEbGMTNHn")
+        setclipboard("https://discord.gg/eGnwUAbST")
         Notify("Copied!", "Link copied to clipboard!", 3)
     end
 })
@@ -1804,4 +1804,4 @@ task.spawn(function()
 end)
 
 Library:ChangeTheme("Accent", Color3.fromRGB(0, 255, 255))
-Library:Notification("Apex farm", "", 3)
+Library:Notification("Srt farm", "", 3)
