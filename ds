@@ -1567,7 +1567,7 @@ task.spawn(function()
     end)
 end)
 
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/BypassCash1/kat-ui-library/refs/heads/main/pulse.lua"))()
+local Library = loadstring(game:HttpGet("https://pastebin.com/raw/s7FdgCaz"))()
 local OriginalWindow = Library.Window
 
 Library.Window = function(self, Data)
@@ -1804,4 +1804,4 @@ task.spawn(function()
 end)
 
 Library:ChangeTheme("Accent", Color3.fromRGB(0, 255, 255))
-Library:Notification("Srt farm", "", 3)
+Library:Notification("Srt farm", "", 3) 
